@@ -1,0 +1,23 @@
+{
+  "name": "aura-studio-backend",
+  "version": "1.0.0",
+  "description": "AURA Studio Backend - Multimodal Creative Director Agent",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^7.11.0",
+    "@google-cloud/storage": "^7.14.0",
+    "@google-cloud/vertexai": "^1.9.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "uuid": "^11.0.3",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

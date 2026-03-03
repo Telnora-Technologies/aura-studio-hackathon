@@ -6,7 +6,7 @@
 
 | Layer | Technology |
 |-------|-----------|
-| AI | Gemini 3.1 Pro (Vertex AI), Gemini Live API, Google ADK |
+| AI | Gemini 2.0 Flash (Vertex AI), Gemini Live API, Google ADK |
 | Backend | Node.js, Express, WebSockets |
 | Frontend | Next.js, TailwindCSS |
 | Cloud | Vertex AI, Cloud Run, Firestore, Cloud Storage, Secret Manager |
@@ -22,7 +22,7 @@ User (voice + image)
        ↓
   Gemini Live API (real-time streaming)
        ↓
-  Gemini 3.1 Pro via Vertex AI
+  Gemini 2.0 Flash via Vertex AI
        ↓
   ADK Agent Orchestration
        ↓

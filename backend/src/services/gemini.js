@@ -39,7 +39,7 @@ Download: [URL from tool result]
 Always call the appropriate tools to generate real media assets. Do not just describe what could be done - actually create the assets using your tools.`;
 
 // Get the generative model
-function getModel(modelName = 'gemini-2.0-flash-001') {
+function getModel(modelName = 'gemini-3.1-pro-preview') {
   return vertexAI.getGenerativeModel({
     model: modelName,
     generationConfig: {

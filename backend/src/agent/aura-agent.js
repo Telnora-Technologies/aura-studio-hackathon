@@ -10,7 +10,7 @@ const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
 class AuraAgent {
   constructor() {
     this.model = vertexAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-001',
+      model: 'gemini-3.1-pro-preview',
       generationConfig: {
         maxOutputTokens: 8192,
         temperature: 0.9,

@@ -14,6 +14,7 @@ const sessionRoutes = require('./routes/session');
 const generateRoutes = require('./routes/generate');
 const assetRoutes = require('./routes/assets');
 const { handleWebSocket } = require('./services/websocket');
+const { requireAuth } = require('./middleware/firebaseAuth');
 
 const app = express();
 const server = http.createServer(app);
@@ -22,8 +23,12 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 // Middleware
+const allowedOrigin = process.env.FRONTEND_URL;
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, cb) => {
+    if (!allowedOrigin || allowedOrigin === '*') return cb(null, true);
+    return cb(null, origin === allowedOrigin);
+  },
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -38,9 +43,9 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/session', sessionRoutes);
-app.use('/generate', generateRoutes);
-app.use('/assets', assetRoutes);
+app.use('/session', requireAuth, sessionRoutes);
+app.use('/generate', requireAuth, generateRoutes);
+app.use('/assets', requireAuth, assetRoutes);
 
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {

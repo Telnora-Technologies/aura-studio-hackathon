@@ -31,10 +31,31 @@ async function loadSession(sessionId) {
   return { sessionId, ...doc.data() };
 }
 
+async function loadSessionForUser(sessionId, userId) {
+  const session = await loadSession(sessionId);
+  if (!session) return null;
+  if (session.userId && session.userId !== userId) return null;
+  return session;
+}
+
 // List all sessions (most recent first)
 async function listSessions(limit = 20) {
   const snapshot = await db
     .collection(SESSIONS_COLLECTION)
+    .orderBy('updatedAt', 'desc')
+    .limit(limit)
+    .get();
+
+  return snapshot.docs.map((doc) => ({
+    sessionId: doc.id,
+    ...doc.data(),
+  }));
+}
+
+async function listSessionsByUser(userId, limit = 20) {
+  const snapshot = await db
+    .collection(SESSIONS_COLLECTION)
+    .where('userId', '==', userId)
     .orderBy('updatedAt', 'desc')
     .limit(limit)
     .get();
@@ -54,6 +75,8 @@ async function deleteSession(sessionId) {
 module.exports = {
   storeSession,
   loadSession,
+  loadSessionForUser,
   listSessions,
+  listSessionsByUser,
   deleteSession,
 };

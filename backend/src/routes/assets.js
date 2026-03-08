@@ -6,6 +6,8 @@ const router = express.Router();
 // GET /assets — List all assets
 router.get('/', async (req, res) => {
   try {
+    const userId = req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const files = await listFiles();
     res.json({ assets: files });
   } catch (err) {

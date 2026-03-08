@@ -4,13 +4,16 @@ const { AURA_SYSTEM_PROMPT } = require('../services/gemini');
 
 const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'aura-studio-hack';
 const LOCATION = process.env.GCP_REGION || 'us-central1';
+const MODEL_RAW = process.env.GEMINI_MODEL || 'gemini-2.0-flash-001';
+const MODEL = MODEL_RAW.includes('/') ? MODEL_RAW.split('/').pop() : MODEL_RAW;
 
 const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
 
 class AuraAgent {
-  constructor() {
+  constructor(options = {}) {
+    this.toolsEnabled = options.enableTools !== false;
     this.model = vertexAI.getGenerativeModel({
-      model: 'gemini-3.1-pro-preview',
+      model: MODEL,
       generationConfig: {
         maxOutputTokens: 8192,
         temperature: 0.9,
@@ -19,7 +22,7 @@ class AuraAgent {
       systemInstruction: {
         parts: [{ text: AURA_SYSTEM_PROMPT }],
       },
-      tools: toolDefinitions,
+      ...(this.toolsEnabled ? { tools: toolDefinitions } : {}),
     });
     this.chatHistory = [];
   }
@@ -53,7 +56,7 @@ class AuraAgent {
     let candidate = response.response.candidates[0];
 
     // Handle function calls in a loop (agent may call multiple tools)
-    while (candidate.content.parts.some((p) => p.functionCall)) {
+    while (this.toolsEnabled && candidate.content.parts.some((p) => p.functionCall)) {
       const functionCallParts = candidate.content.parts.filter((p) => p.functionCall);
       const functionResponses = [];
 
@@ -108,14 +111,16 @@ class AuraAgent {
           yield { type: 'text', content: part.text };
         }
         if (part.functionCall) {
-          functionCalls.push(part.functionCall);
-          yield { type: 'tool_call', name: part.functionCall.name, args: part.functionCall.args };
+          if (this.toolsEnabled) {
+            functionCalls.push(part.functionCall);
+            yield { type: 'tool_call', name: part.functionCall.name, args: part.functionCall.args };
+          }
         }
       }
     }
 
     // Execute any accumulated function calls
-    if (functionCalls.length > 0) {
+    if (this.toolsEnabled && functionCalls.length > 0) {
       const functionResponses = [];
 
       for (const fc of functionCalls) {

@@ -1,14 +1,17 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { storeSession, loadSession, listSessions } = require('../services/firestore');
+const { storeSession, loadSessionForUser, listSessionsByUser } = require('../services/firestore');
 
 const router = express.Router();
 
 // POST /session/start — Create a new session
 router.post('/start', async (req, res) => {
   try {
+    const userId = req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     const sessionId = uuidv4();
     await storeSession(sessionId, {
+      userId,
       status: 'active',
       createdAt: new Date().toISOString(),
       prompt: '',
@@ -24,7 +27,9 @@ router.post('/start', async (req, res) => {
 // GET /session/:id — Load a session
 router.get('/:id', async (req, res) => {
   try {
-    const session = await loadSession(req.params.id);
+    const userId = req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const session = await loadSessionForUser(req.params.id, userId);
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -38,7 +43,9 @@ router.get('/:id', async (req, res) => {
 // GET /session — List all sessions
 router.get('/', async (req, res) => {
   try {
-    const sessions = await listSessions();
+    const userId = req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const sessions = await listSessionsByUser(userId);
     res.json({ sessions });
   } catch (err) {
     console.error('Error listing sessions:', err);

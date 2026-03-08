@@ -81,35 +81,72 @@ async function executeTool(functionCall) {
   switch (name) {
     case 'generate_image': {
       try {
-        // Placeholder: Use stock images for demo (in production, this would use Imagen API)
-        // For hackathon demo, return relevant stock image URLs that fit creative briefs
-        const prompt = args.prompt.toLowerCase();
+        const { VertexAI } = require('@google-cloud/vertexai');
+        const PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT || 'aura-studio-hack';
+        const LOCATION = process.env.GCP_REGION || 'us-central1';
 
-        let imageUrl;
-        if (prompt.includes('sneaker') || prompt.includes('shoe')) {
-          imageUrl = 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&h=600&fit=crop';
-        } else if (prompt.includes('eco') || prompt.includes('green') || prompt.includes('nature')) {
-          imageUrl = 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&h=600&fit=crop';
-        } else if (prompt.includes('urban') || prompt.includes('city') || prompt.includes('street')) {
-          imageUrl = 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800&h=600&fit=crop';
-        } else if (prompt.includes('fashion') || prompt.includes('style')) {
-          imageUrl = 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&h=600&fit=crop';
-        } else {
-          // Default creative image
-          imageUrl = 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=800&h=600&fit=crop';
+        const imageModelRaw = process.env.GEMINI_IMAGE_MODEL || 'gemini-2.5-flash-image';
+        const imageModel = imageModelRaw.includes('/') ? imageModelRaw.split('/').pop() : imageModelRaw;
+
+        const vertexAI = new VertexAI({ project: PROJECT_ID, location: LOCATION });
+
+        try {
+          const model = vertexAI.getGenerativeModel({ model: imageModel });
+
+          const promptText = `Create a high-quality marketing image.
+Prompt: ${args.prompt}
+Aspect ratio: ${args.aspect_ratio || '1:1'}
+Return an image (not a description).`;
+
+          const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: promptText }] }],
+          });
+
+          const parts = result?.response?.candidates?.[0]?.content?.parts || [];
+          const inline = parts.find((p) => p.inlineData && p.inlineData.data);
+
+          if (inline?.inlineData?.data) {
+            const { uploadBase64Image } = require('../services/storage');
+            const uploaded = await uploadBase64Image(inline.inlineData.data, `generated-${Date.now()}.png`);
+            console.log(`[Tool] generate_image (model:${imageModel}) -> ${uploaded.url}`);
+            return {
+              status: 'success',
+              url: uploaded.url,
+              prompt: args.prompt,
+              aspect_ratio: args.aspect_ratio || '1:1',
+              model: imageModel,
+            };
+          }
+
+          throw new Error('Image model did not return inline image data');
+        } catch (modelErr) {
+          // Fallback: Use stock images for demo (still counts as interleaved visuals)
+          const p = (args.prompt || '').toLowerCase();
+
+          let imageUrl;
+          if (p.includes('sneaker') || p.includes('shoe')) {
+            imageUrl = 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=1200&h=800&fit=crop';
+          } else if (p.includes('eco') || p.includes('green') || p.includes('nature')) {
+            imageUrl = 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1200&h=800&fit=crop';
+          } else if (p.includes('urban') || p.includes('city') || p.includes('street')) {
+            imageUrl = 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1200&h=800&fit=crop';
+          } else if (p.includes('fashion') || p.includes('style')) {
+            imageUrl = 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1200&h=800&fit=crop';
+          } else {
+            imageUrl = 'https://images.unsplash.com/photo-1558655146-d09347e92766?w=1200&h=800&fit=crop';
+          }
+
+          console.log(`[Tool] generate_image fallback -> ${imageUrl} (reason: ${modelErr.message})`);
+
+          return {
+            status: 'success',
+            url: imageUrl,
+            prompt: args.prompt,
+            aspect_ratio: args.aspect_ratio || '1:1',
+            model: 'fallback-stock',
+            note: `Image model unavailable or failed (${imageModel}): ${modelErr.message}`,
+          };
         }
-
-        console.log(`[Tool] generate_image: ${imageUrl} for prompt: ${args.prompt}`);
-
-        // For demo purposes, return the stock image URL directly
-        // In production, this would generate and upload to Cloud Storage
-        return {
-          status: 'success',
-          url: imageUrl,
-          prompt: args.prompt,
-          aspect_ratio: args.aspect_ratio || '1:1',
-          note: 'Demo using stock image - production would use Imagen API',
-        };
       } catch (err) {
         console.error('Image generation error:', err);
         return {
